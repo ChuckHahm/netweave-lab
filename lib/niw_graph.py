@@ -1,6 +1,21 @@
 import networkx as nx
 import pandas as pd
+import pyarrow.parquet as pq
 from collections import Counter
+
+
+def _read_parquet(path: str) -> pd.DataFrame:
+    # Build DataFrame column-by-column from raw pyarrow arrays to avoid
+    # pandas metadata deserialization errors from cross-version parquet files.
+    table = pq.read_table(path)
+    data = {}
+    for i, name in enumerate(table.schema.names):
+        col = table.column(i)
+        if hasattr(col, 'to_pylist'):
+            data[name] = col.to_pylist()
+        else:
+            data[name] = col.to_pandas().tolist()
+    return pd.DataFrame(data)
 
 
 def load_graph(nodes_path: str, edges_path: str) -> nx.DiGraph:
@@ -10,8 +25,8 @@ def load_graph(nodes_path: str, edges_path: str) -> nx.DiGraph:
     Edge attributes: tie_strength, role_fit, intro_likelihood, composite.
     domain_score is NOT stored on edges — it is computed at query time.
     """
-    nodes_df = pd.read_parquet(nodes_path)
-    edges_df = pd.read_parquet(edges_path)
+    nodes_df = _read_parquet(nodes_path)
+    edges_df = _read_parquet(edges_path)
 
     G = nx.DiGraph()
 
@@ -22,10 +37,14 @@ def load_graph(nodes_path: str, edges_path: str) -> nx.DiGraph:
         attrs["domain_tags"] = list(attrs.get("domain_tags", []) or [])
         G.add_node(node_id, **attrs)
 
+    # Support both source/target and source_id/target_id column names
+    src_col = "source_id" if "source_id" in edges_df.columns else "source"
+    tgt_col = "target_id" if "target_id" in edges_df.columns else "target"
+
     for _, row in edges_df.iterrows():
         G.add_edge(
-            row["source"],
-            row["target"],
+            row[src_col],
+            row[tgt_col],
             tie_strength=float(row.get("tie_strength", 0.0)),
             role_fit=float(row.get("role_fit", 0.0)),
             intro_likelihood=float(row.get("intro_likelihood", 0.0)),

@@ -1,7 +1,7 @@
 # EXP001 — Tie Strength Decay Function
 
-**Status:** planned  
-**Date started:** —  
+**Status:** INCONCLUSIVE  
+**Date run:** 2026-06-25  
 **Author:** Chuck Wiley
 
 ## Question
@@ -28,21 +28,29 @@ Winning variant achieves NDCG@10 ≥ 0.80 against `build_ground_truth(G, ["medic
 
 ## Results
 
-| Variant | NDCG@10 | Notes |
-|---------|---------|-------|
-| (not yet run) | — | — |
+| Variant | NDCG@10 | P@10 |
+|---------|---------|------|
+| exp_180 | 0.1312 | 0.10 |
+| exp_365 | 0.1312 | 0.10 |
+| exp_730 | 0.1312 | 0.10 |
+| linear  | 0.1312 | 0.10 |
+| step    | 0.1312 | 0.10 |
+
+All variants tied. See `results.png` for the comparison chart.
 
 ## Decision
 
-**Winner:** —  
-**Margin over baseline:** —  
-**Decision:** planned  
-**MLflow run ID:** —  
-**Date of decision:** —
+**Winner:** none (all tied)  
+**Margin over baseline:** 0.000  
+**Decision:** INCONCLUSIVE  
+**Date of decision:** 2026-06-25
 
-## Production change (if VALIDATED)
+**Root cause:** 4 of 5 ground-truth nodes have recency_days in the 3,753–5,726 range and rank 895–1443 under every decay function. Only one relevant node (42 days) reaches top-10, at rank 5 identically across all variants. Decay shape is irrelevant when recency alone cannot surface domain-relevant contacts.
 
-File: `netweave/src/edges.py`  
-Function: `tie_strength()`  
-Change: Update decay function and parameters to the winning variant.  
-Citation: `# Validated in EXP001 — see netweave-lab/experiments/EXP001_tie_strength/`
+**Structural finding:** `tie_strength` (recency) is a weak primary ranking signal for domain-specific intro queries. The `composite` score is what surfaces old-but-relevant contacts.
+
+**Follow-up:** Re-run EXP001 using `composite` as the ranking signal so the experiment tests decay shape within the weighted formula rather than in isolation.
+
+## Production change
+
+**None.** Retain `exp_365` as the production default (least aggressive; penalizes old contacts least).
