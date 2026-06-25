@@ -1,0 +1,13 @@
+jupyterlab>=4.0
+networkx>=3.0
+pandas>=2.0
+pyarrow
+matplotlib>=3.0
+panel>=1.0
+mlflow>=2.0
+py4cytoscape>=1.0
+faiss-cpu>=1.0
+sentence-transformers
+anthropic
+scikit-learn
+pytest
